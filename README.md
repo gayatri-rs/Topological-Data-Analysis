@@ -23,8 +23,10 @@ To plot a high-dimensional dataset as a point cloud , we cannot plot all of its 
 It is difficult to derive insights from these point clouds. For example the 30-dimensional breast cancer dataset from sckit-learn. Malignant indicates a cancerous tumor, Benign indicates a non-cancerous tumor.
 
 <p align="center">
-<img width="300" height="300" alt="b14d9ef4-507a-4494-b0aa-32780951b008" src="https://github.com/user-attachments/assets/5bb096f1-a9ac-43e4-bd77-dc4f5da3ef3b" />
+<img width="300" height="300" alt="b14d9ef4-507a-4494-b0aa-32780951b008" src="https://github.com/user-attachments/assets/6f7c1bf7-ded3-48e1-8ccf-6214cd7555dd" />
 </p>
+
+---
 
 We can further use dimensionality reduction techniques. Using PCA (Principal Component Analysis) and t-SNE (t-Distributed Stochastic Neighbor Embedding) on high-dimensional datasets helps simplify complex data, but both methods come with major drawbacks. PCA struggles to capture curved, non-linear relationships, while t-SNE is slow, distorts global distances, and cannot easily transform new data.
 
@@ -41,6 +43,7 @@ For example let us consider we have a 5-pointed star shaped dataset and we apply
 
 Because the 5-pointed star is a non-linear, with multi-branches (a central core and 5 radial flares extending in different directions), a 1D linear projection crushes the entire structure onto a straight line, completely destroying the star shape and conflating distinct clusters.
 
+---
 
 Now t-SNE (t-Distributed Stochastic Neighbor Embedding) is a non-linear dimensionality reduction particulary for visualizing complex, high-dimensional datasets on a 2D or 3D scatter plot. It works by taking thousands of columns of data and mapping them onto a flat grid while ensuring that data points that were close neighbors in high-dimensional space stay close together on the final map. Instead of projecting data onto straight lines like PCA, t-SNE uses probabilities.
 
@@ -65,6 +68,8 @@ Consider another example where we take synthetic data of 2 concentric circles. A
 <img width="850" height="370" alt="2b875665-4b4f-45ee-8720-53527dd8cf8c" src="https://github.com/user-attachments/assets/b82aaf44-b21d-4f59-98bf-547dafb70150" />
 </p>
 
+---
+
 So now we can talk about "shape" of the data, what exactly does it mean to understand the shape of the data?
 
 From previous examples, we saw how PCA might lose the "void" or "loops" in the data, t-SNE might lose "continuity" or "flares" of the data. Understanding and distinguishing these different features is what we mean by understanding "shape". 
@@ -83,6 +88,7 @@ Example: In single-cell biology, stem cells start in a central cluster and branc
 \
 Example: A continuous spectrum of disease progression.
 
+
 ## Topological Techniques of Dimension Reduction
 
 Now how does Topological Data Analysis (TDA) help us in this aspect better than other dimensionality technique?
@@ -90,12 +96,146 @@ Now how does Topological Data Analysis (TDA) help us in this aspect better than 
 TDA does not force high-dimensional data into a flat 2D or 3D box, instead of squashing data TDA analyzes the shape directly in its native high-dimensional space and extracts mathematical summaries of its structure. TDA provides tools like Persistent Homology, Mapper, Persistence Landscapes, Topological Data Embedding. Among thses my project particularly focuses on **Mapper** (and the filter functions it uses).
 
 ### Mapper
+The Mapper algorithm is a Topological Data Analysis (TDA) technique that simplifies complex, high-dimensional datasets into a clean, easy-to-read network graph (a skeleton made of nodes and edges). Unlike standard scatter plots that squash data and lose branches, Mapper preserves flares, loops, and continuous paths.
+
+---
+
+**Mapper Alogirthm**
+
+INPUTS
+- **Dataset (<i>X</i>):** A collection of <i>N</i> data points in high-dimensional space.
+- **Filter Function / Lens (<i>f</i>):** A rule that maps each high-dimensional point to a lower-dimensional value (usually a single 1D number).
+- **Number of Intervals (<i>S</i>):** How many slices to divide the output range into.
+- **Overlap Percentage (<i>p</i>):** How much adjacent slices overlap with each other (typically 20% to 50%).
+- **Clustering Method (<i>C</i>):** A standard clustering algorithm (such as DBSCAN or Single-Linkage Clustering).
+
+OUTPUT
+- **Topological Graph (<i>G</i>):** A network consisting of a set of Nodes (<i>V</i>) and Edges (<i>E</i>).
+  
+---
+
+Step-by-Step Procedure
+
+**1. INITIALIZE**
+- Create an empty list of Nodes (<i>V</i> = ∅).
+- Create an empty list of Edges (<i>E</i> = ∅).
+- Create an empty list of Projected Values (<i>Z</i>).
+
+**2. PROJECT DATA (APPLY LENS)**
+- **FOR EACH** data point <i>x</i><sub><i>i</i></sub> in Dataset <i>X</i>:
+  - Compute its projected value: <i>z</i><sub><i>i</i></sub> = <i>f</i>(<i>x</i><sub><i>i</i></sub>).
+  - Store <i>z</i><sub><i>i</i></sub> in list <i>Z</i>.
+
+**3. CREATE OVERLAPPING BINS**
+- Find the minimum value (<i>z</i><sub>min</sub>) and maximum value (<i>z</i><sub>max</sub>) in list <i>Z</i>.
+- Divide the range [<i>z</i><sub>min</sub>, <i>z</i><sub>max</sub>] into <i>S</i> overlapping intervals (bins) <i>B</i><sub>1</sub>, <i>B</i><sub>2</sub>, …, <i>B</i><sub><i>S</i></sub>, where each bin overlaps with its neighbor by <i>p</i>%.
+
+**4. SLICE AND CLUSTER**
+- **FOR EACH** interval bin <i>B</i><sub><i>k</i></sub> (from <i>k</i> = 1 to <i>S</i>):
+  - **Filter:** Gather all original high-dimensional points <i>x</i><sub><i>i</i></sub> whose projected value <i>z</i><sub><i>i</i></sub> falls inside bin <i>B</i><sub><i>k</i></sub>. Call this subset <i>X</i><sub><i>k</i></sub>.
+  - **IF** subset <i>X</i><sub><i>k</i></sub> is not empty:
+    - Apply Clustering Method <i>C</i> directly to the high-dimensional points in <i>X</i><sub><i>k</i></sub>.
+    - **FOR EACH** distinct cluster found inside <i>X</i><sub><i>k</i></sub>:
+      - Create a new Node <i>v</i> representing that specific cluster of points.
+      - Add Node <i>v</i> to the graph's node list <i>V</i>.
+
+**5. CONNECT OVERLAPPING NODES**
+- **FOR EACH** pair of distinct Nodes (<i>v</i><sub><i>a</i></sub>, <i>v</i><sub><i>b</i></sub>) in list <i>V</i>:
+  - Check the original data points contained inside Node <i>v</i><sub><i>a</i></sub> and Node <i>v</i><sub><i>b</i></sub>.
+  - **IF** Node <i>v</i><sub><i>a</i></sub> and Node <i>v</i><sub><i>b</i></sub> share at least one common data point:
+    - Draw an Edge <i>e</i> connecting Node <i>v</i><sub><i>a</i></sub> and Node <i>v</i><sub><i>b</i></sub>.
+    - Add Edge <i>e</i> to the graph's edge list <i>E</i>.
+
+**6. RETURN RESULT**
+- Output the final network graph <i>G</i> = (<i>V</i>, <i>E</i>).
+
+an example showing the steps in which mapper is applied.
+
+<img width="2500" height="1400" alt="Gemini_Generated_Image_mvr7fwmvr7fwmvr7 (1)" src="https://github.com/user-attachments/assets/83b13386-e10b-4c3a-a987-e5d16b7769a3" />
+
+---
+
+Now let us apply mapper to the previous examples of 5-pointed star where we apply filter function as the distance from the center of the star.
+
+<img width="1000" height="400" alt="3978ea2a-37d6-4aad-80f2-49915b4cffff" src="https://github.com/user-attachments/assets/4f9f64f9-306f-4e5d-bd52-fd77099a2f80" />
+
+This demonstrates how the Mapper algorithm simplifies a continuous point cloud into a compact topological summary while preserving key structural features like loops and flares.
+
+---
+
+Next we apply Y-axix filter to 2 concentric circles, meaning all values are projected onto the Y-axis and then the alogrithm proceeds
 
 
-git checkout --orphan temp_branch
-git add -A
-git commit -m "Initial commit"
-git branch -D main
-git branch -m main
-git push -f origin main
+ <img width="1000" height="400" alt="b4aa4484-b20d-4c4a-8e8c-bd340f8364cf" src="https://github.com/user-attachments/assets/03024fdc-5775-42ef-b010-409f86354cba" />
+
+In this image, the filter function projects the data horizontally from bottom to top onto the Y-axis:
+
+• Top and Bottom Caps (1 Node): Near the very top (y ≈  2.5) or bottom (y ≈ -2.5) of a circle, a horizontal slice catches just one continuous cap of points, creating 1 node.
+
+• Middle Slices (2 Nodes): Across the middle of a circle (y ≈  0), a horizontal slice cuts through the left side and the right side separately. Because those two sides are far apart in 2D space, local clustering splits them into 2 distinct nodes (one left, one right).
+
+• Result: As the overlapping slices move from bottom to top, the left nodes chain together, the right nodes chain together, and they rejoin at the top and bottom caps—reconstructing two intact, closed loops.
+
  
+ By connecting overlapping clusters with edges, the resulting Mapper Graph successfully retains the original data's core topology—two disconnected, nested loops—while drastically reducing the number of data points.
+
+ ---
+ 
+**Why Mapper is So Useful and Different?**
+
+Traditional dimensionality reduction tools, such as Principal Component Analysis (PCA) or t-SNE attempt to force complex, high-dimensional data onto flat 2D or 3D Euclidean planes. This often crushes or tears the data’s global non-linear
+geometry, creating unstructured scatterplots that distort the true topological relationships.
+
+Furthermore, standard clustering algorithms (like K-Means) impose artificial boundaries,
+assuming data points belong to mutually exclusive “discrete islands” rather than continuous
+transitions. Mapper solves this by simultaneously preserving local connectivity and global shape,
+producing a highly visual, connected combinatorial graph rather than a flat, unstructured
+projection.
+
+• Very lenient : We aren’t locked into one specific technique. Mapper allows
+you to plug in any filter function or clustering algorithm (like DBSCAN or PCA) that
+best fits our specific dataset.
+
+• Multiresolution: By tweaking parameters (like the size of overlapping intervals), you
+can zoom in and out of the data to verify if a structural pattern is a genuine feature or
+just a mathematical artifact.
+
+• PCA only captures global linear variance, ignoring non-linear geometry, t-SNE preserve local neighbourhoods but tear apart global continuous pathways, distort inter-cluster distances, and cannot natively represent branching progressions. Mapper preserves both local connectivity and global shape simultaneously by generating a connected graph rather than projecting points onto a flat 2D plane.
+
+• Captures Flares and Branches: If our dataset has branching subgroups (such as patients diverging into different disease subtypes), Mapper cleanly renders them as distinct arms sticking out of a central hub. Preserves Loops: If our data forms a circular cycle, the overlapping slices wrap around and connect back to the start, forming a ring of nodes.
+
+• Handles High Dimensions Effortlessly: Even if your raw dataset has 10,000 columns (such as gene expression data), Mapper compresses thousands of points into a simple graph with a few dozen nodes.
+
+
+---
+
+Now as mesntioned above we can use _any_ filter function, so let us try using different fucntion on 2 concentric circles. We will apply centrality filter, i.e distance from the center. 
+
+<img width="1389" height="613" alt="028d001f-8986-4960-a80f-5e8dc5637c24" src="https://github.com/user-attachments/assets/892c6f42-f8d5-4415-9daa-da3700b6904d" />
+understand that after appltying the centrality filter, the filtered values will lie in small intervals around the radius of the circles and these intervals won't have any intersection as the radius of the circles are differ by a sinifncant value. so resulting graph are 2 separated nodes without any edge between them.
+
+In the image where the filter function measures distance from the center (radius):
+
+• Inner Circle : Every point on the inner circle sits at a radius of roughly 1.0 (<i>r<sub>1</sub></i>). When Mapper filters the data values, the entire inner circle falls into a single small neighborhood around 1.0 (<i>r<sub>1</sub></i>) and clusters into one single node (blue).
+
+• Outer Circle : Every point on the outer circle sits at a radius of roughly 2.5 (<i>r<sub>2</sub></i>). The entire outer circle falls into a single small neighborhood around 2.5 (<i>r<sub>2</sub></i>) and clusters into one single node (orange).
+
+• Result: Because the lens is completely blind to angles around the circle, it compresses each ring into a single dot. It accurately tells you there are 2 separate components, but it hides the fact that they are loops.
+
+---
+
+Note that we observed something similar in case where we applied t-SNE and got 2 separated components but one was C-shaped. 
+Here also we ontain 2 separated components. 
+
+
+**Does this mean the algorithm is faulty?**
+
+The dramatic difference happens because Mapper acts like a camera, and the filter (lens) function can be thought of as literal filters that extract different features. Depending on which lens you choose, Mapper highlights different topological features of the exact same data.
+
+### Filters
+So the next question would be how to tell which filters extract what features? 
+
+To understand which filter extracts which feature, we need to look at how the filter value changes as we move across our data. When Mapper slices data, it groups points with the same filter value together. This creates a simple rule of thumb: a filter preserves features that move across its slices, and collapses features that stay inside a single slice.
+
+
+
